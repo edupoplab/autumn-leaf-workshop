@@ -61,3 +61,20 @@
 .display-entry-qr{gap:7px;padding:9px}.display-entry-qr .join-code-group{flex-direction:column;flex-wrap:nowrap;align-items:center;gap:6px;width:100%}.display-entry-qr .join-code-group .display-entry-code{font-size:13px;letter-spacing:0}.display-entry-qr .join-code-group>small{font-size:12px}.display-entry-qr .join-code-group button{width:100%;min-height:42px;font-size:13px;padding:8px 6px}.canvas-display #display-status .actions{display:flex;gap:12px}.teacher-downloads button{margin-left:0}
 @media(max-width:850px){.teacher-room-bar{grid-template-columns:1fr;gap:20px}.teacher-room-actions{max-width:100%}.teacher-qr-panel{align-items:center;text-align:left}.teacher-entry-content{width:100%}.teacher-entry-tools{justify-content:flex-start}.teacher-entry-content .join-code-group{width:100%}.display-entry-qr{padding:5px;gap:5px}.display-entry-qr .join-code-group .display-entry-code{font-size:11px}.display-entry-qr .join-code-group button{font-size:11px;padding:7px 3px}.display-entry-header .actions{gap:10px}}
 @media(max-width:480px){.teacher-room-bar{padding:18px}.teacher-entry-tools>.join-code-group{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}.teacher-entry-tools .display-entry-code{font-size:19px;letter-spacing:0}.teacher-entry-tools .join-code-group>button{grid-column:1/-1;width:100%}.room-more-actions button{font-size:13px}.display-entry-header .actions{flex-direction:column;align-items:stretch}.display-entry-header #gallery-owner-actions button{width:100%;text-align:center;font-size:12px;padding:8px 10px}}
+
+/* Exhibition mode keeps the 1000 x 700 artwork coordinates intact. */
+.gallery-fullscreen-actions{margin-top:0!important}.gallery-fullscreen-actions button{min-height:46px!important}
+.gallery-presenting{overflow:hidden}.gallery-presenting>.topbar,.gallery-presenting>.site-footer{display:none}
+.canvas-display.gallery-presentation{position:fixed;inset:0;z-index:1000;max-width:none;margin:0;padding:0;display:flex;align-items:center;justify-content:center;isolation:isolate;background:#263c2c;overflow:hidden}
+.gallery-presentation:before{content:'';position:absolute;inset:-20px;z-index:-1;background-image:var(--presentation-scene);background-position:center;background-size:cover;filter:blur(12px) brightness(.65)}
+.gallery-presentation> :not(#display-grid):not(.display-entry-header):not(.gallery-presentation-exit):not(#display-error){display:none!important}
+.gallery-presentation>#display-grid{flex:none;width:min(100vw,142.857142857vh);height:min(100vh,70vw);aspect-ratio:10/7;border:0;border-radius:0;box-shadow:none;outline:0}
+.gallery-presentation>.display-entry-header{position:absolute;top:max(14px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));width:clamp(88px,10vw,136px);display:block;margin:0;padding:0;border:0;background:transparent;z-index:50}
+.gallery-presentation .display-entry-header>.intro{display:none!important}
+.gallery-presentation .display-entry-qr{padding:7px;gap:0;box-shadow:0 3px 16px #0003;background:#fff;border:0;border-radius:10px}
+.gallery-presentation .display-entry-qr>:not(.room-qr){display:none!important}
+.gallery-presentation .display-entry-qr:not(:has(.room-qr)){display:none}
+.gallery-presentation .display-entry-qr .room-qr{width:100%;height:auto;aspect-ratio:1}
+.gallery-presentation-exit[hidden]{display:none!important}.gallery-presentation>.gallery-presentation-exit{position:absolute;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));z-index:50;min-height:44px;padding:10px 16px;background:#fffef7ee;color:#284335;border:1px solid #fff8;box-shadow:0 3px 16px #0002;font-size:14px}
+.gallery-presentation>#display-error:not([hidden]){position:absolute;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(90vw,700px);z-index:60;background:#fff9ee}
+@supports(height:100dvh){.gallery-presentation>#display-grid{width:min(100vw,142.857142857dvh);height:min(100dvh,70vw)}}
