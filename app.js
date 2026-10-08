@@ -404,19 +404,55 @@ async function startDisplay(){
 }
 function clearTeacherContext(){for(const key of ['leaf-teacher-session','leaf-display-session','leaf-teacher-ui-unlocked','leaf-shared-device-lock'])store.remove(key,true);teacherGate.clear();}
 function authMessage(error){return {REGISTRATION_FAILED:'계정을 만들지 못했어요. 이메일과 비밀번호를 확인하거나 잠시 뒤 다시 시도해 주세요.',INVALID_INPUT:'이메일과 8자 이상 비밀번호를 입력해 주세요.',INVALID_CREDENTIALS:'이메일과 비밀번호를 다시 확인해 주세요.',SESSION_EXPIRED:'로그인 시간이 지났어요. 다시 로그인해 주세요.',RATE_LIMITED:'로그인 시도가 많아요. 잠시 뒤 다시 시도해 주세요.',CONFIGURATION:'교사 로그인 연결이 아직 준비되지 않았어요.',NETWORK:'로그인 서버에 연결하지 못했어요.',TIMEOUT:'연결이 늦어지고 있어요. 다시 시도해 주세요.'}[error.code]||'로그인을 확인하지 못했어요. 다시 시도해 주세요.';}
-function showTeacherLogin(){
- const card=node('section',undefined,'management'),form=node('form',undefined,'setup-card'),title=node('h1','선생님 로그인'),email=node('input'),password=node('input'),error=node('p','','field-error');error.hidden=true;email.type='email';email.autocomplete='username';email.required=true;email.setAttribute('aria-label','교사 이메일');email.placeholder='이메일';password.type='password';password.autocomplete='current-password';password.required=true;password.setAttribute('aria-label','교사 계정 비밀번호');password.placeholder='비밀번호 (새 계정은 8자 이상)';const submit=node('button','로그인','primary');submit.type='submit';form.append(title,node('p','선생님 계정으로 로그인해요. 처음 이용하면 아래에서 계정을 만들고 이메일을 확인해 주세요.'),email,password,error,submit);const register=button('처음 이용하는 선생님 · 계정 만들기',async()=>{
- if(!email.reportValidity())return;
- if(password.value.length<8){error.textContent='새 계정 비밀번호는 8자 이상으로 정해 주세요.';error.hidden=false;return;}
- register.disabled=true;submit.disabled=true;error.hidden=true;
- try{const secret=password.value;password.value='';await teacherAuth.signUp(email.value.trim(),secret);error.textContent='이메일에 도착한 확인 링크를 누른 뒤 이 화면에서 로그인해 주세요. 이미 계정이 있다면 기존 비밀번호로 로그인하세요. 이메일 확인을 마치면 바로 수업을 만들 수 있어요.';error.hidden=false;}
- catch(err){error.textContent=authMessage(err);error.hidden=false;}
- finally{register.disabled=false;submit.disabled=false;}
-});
-const purpose=node('p','이메일 계정으로 내 수업을 연결해요. 다른 컴퓨터나 태블릿에서도 같은 계정으로 로그인하면 내 방과 보관 기간이 남은 작품을 이어서 확인하고 다운로드할 수 있어요.','teacher-account-purpose');
+function accountDisclosure(){
 const disclosure=node('details',undefined,'teacher-account-info'),summary=node('summary','가입 정보와 이용 기록 안내');
 disclosure.append(summary,node('p','이메일은 계정 확인과 내 수업 연결에 사용하며, 비밀번호는 인증 서비스에서 해시로 보관합니다. 운영자 화면에서는 비밀번호를 볼 수 없어요.'),node('p','운영자는 교사 이메일별 활동 날짜, 수업 횟수, 입장 건수, 제출 작품 수, 만든 방, 다운로드 요청 수와 최근 접속 시각을 확인할 수 있어요. 수업 횟수는 학생 입장 또는 작품 제출이 있었던 방의 사용 날짜 수이며, 입장 건수에는 재입장이 포함됩니다.'),node('p','교사 가입에서 이름·소속 기관·전화번호는 요구하지 않아요. 학생은 계정 가입 없이 수업 코드로 참여합니다.'),node('p','작품은 제출 후 3일(72시간)이 지나면 자동 삭제됩니다. 이메일 계정과 숫자로 집계한 이용 기록은 작품 삭제 후에도 남습니다.'));
-form.insertBefore(purpose,email);form.append(register,button('비밀번호를 잊었어요',async()=>{if(!email.reportValidity())return;error.hidden=true;try{await teacherAuth.requestPasswordReset(email.value.trim());error.textContent='등록된 이메일이라면 비밀번호를 다시 정하는 링크가 도착합니다. 받은편지함과 스팸함을 확인해 주세요.';}catch(err){error.textContent=authMessage(err);}error.hidden=false;}),disclosure);form.addEventListener('submit',async event=>{event.preventDefault();submit.disabled=true;error.hidden=true;try{const secret=password.value;password.value='';await teacherAuth.signIn(email.value.trim(),secret);clearTeacherContext();await startTeacherEntry();}catch(err){error.textContent=authMessage(err);error.hidden=false;}finally{submit.disabled=false;}});card.append(form);app.replaceChildren(card);
+return disclosure;
+}
+function showTeacherLogin(initialEmail=''){
+ if(typeof initialEmail!=='string')initialEmail='';
+ const card=node('section',undefined,'management'),form=node('form',undefined,'setup-card');
+ const email=node('input'),password=node('input'),error=node('p','','field-error'),notice=node('p','','auth-notice');
+ error.hidden=true;error.setAttribute('role','alert');notice.hidden=true;notice.setAttribute('role','status');
+ email.type='email';email.autocomplete='username';email.required=true;email.value=initialEmail;email.setAttribute('aria-label','교사 이메일');email.placeholder='이메일';
+ password.type='password';password.autocomplete='current-password';password.required=true;password.setAttribute('aria-label','교사 계정 비밀번호');password.placeholder='비밀번호';
+ const submit=node('button','로그인','primary');submit.type='submit';
+ form.append(node('h1','선생님 로그인'),node('p','이미 만든 계정의 이메일과 비밀번호를 입력해 주세요.'),node('p','다른 컴퓨터나 태블릿에서도 같은 계정으로 내 방과 보관 중인 작품을 이어 볼 수 있어요.','teacher-account-purpose'),email,password,error,notice,submit);
+ form.append(button('처음 이용하는 선생님 · 계정 만들기',()=>showTeacherSignup(email.value.trim())),button('비밀번호를 잊었어요',async({currentTarget})=>{
+  if(currentTarget.disabled||!email.reportValidity())return;currentTarget.disabled=true;error.hidden=true;notice.hidden=true;
+  try{await teacherAuth.requestPasswordReset(email.value.trim());if(!form.isConnected)return;notice.textContent='등록된 이메일이라면 비밀번호를 다시 정하는 링크가 도착합니다. 받은편지함과 스팸함을 확인해 주세요.';notice.hidden=false;}
+  catch(err){if(form.isConnected){error.textContent=err.code==='RATE_LIMITED'?'메일 요청이 많아요. 잠시 뒤 다시 요청해 주세요.':authMessage(err);error.hidden=false;}}
+  finally{currentTarget.disabled=false;}
+ }),accountDisclosure());
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(submit.disabled||!form.reportValidity())return;submit.disabled=true;error.hidden=true;notice.hidden=true;
+  try{const secret=password.value;password.value='';await teacherAuth.signIn(email.value.trim(),secret);if(!form.isConnected)return;clearTeacherContext();await startTeacherEntry();}
+  catch(err){if(form.isConnected){error.textContent=authMessage(err);error.hidden=false;}}finally{submit.disabled=false;}
+ });card.append(form);app.replaceChildren(card);
+}
+function showTeacherSignup(initialEmail=''){
+ const card=node('section',undefined,'management'),form=node('form',undefined,'setup-card');
+ const email=node('input'),password=node('input'),repeat=node('input'),error=node('p','','field-error');
+ error.hidden=true;error.setAttribute('role','alert');email.type='email';email.autocomplete='username';email.required=true;email.value=initialEmail;email.placeholder='이메일';email.setAttribute('aria-label','가입할 이메일');
+ for(const input of [password,repeat]){input.type='password';input.autocomplete='new-password';input.required=true;input.minLength=8;input.maxLength=128;}
+ password.placeholder='새 계정 비밀번호 · 8자 이상';password.setAttribute('aria-label','새 계정 비밀번호');repeat.placeholder='비밀번호 다시 입력';repeat.setAttribute('aria-label','비밀번호 다시 입력');
+ const submit=node('button','가입 확인 메일 받기','primary');submit.type='submit';
+ form.append(node('h1','선생님 계정 만들기'),node('p','① 이메일·비밀번호 입력 → ② 받은 메일에서 이메일 확인 → ③ 로그인'),node('p','이메일로 내 수업을 연결해요. 이름·소속 기관·전화번호는 요구하지 않아요. 이메일 확인 후 바로 방을 만들 수 있어요.','teacher-account-purpose'),email,password,repeat,error,submit,button('이미 계정이 있어요 · 로그인',()=>showTeacherLogin(email.value.trim())),accountDisclosure());
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(submit.disabled||!form.reportValidity())return;
+  if(password.value.length<8||password.value.length>128){error.textContent='새 계정 비밀번호는 8~128자로 정해 주세요.';error.hidden=false;return;}
+  if(password.value!==repeat.value){error.textContent='두 칸에 같은 비밀번호를 입력해 주세요.';error.hidden=false;return;}
+  submit.disabled=true;submit.textContent='가입 메일 요청 중…';error.hidden=true;
+  try{const secret=password.value,address=email.value.trim();password.value='';repeat.value='';await teacherAuth.signUp(address,secret);if(form.isConnected)showSignupConfirmation(address);}
+  catch(err){if(form.isConnected){error.textContent=err.code==='RATE_LIMITED'?'가입 메일 요청이 많아요. 잠시 뒤 다시 요청해 주세요.':authMessage(err);error.hidden=false;}}
+  finally{submit.disabled=false;submit.textContent='가입 확인 메일 받기';}
+ });card.append(form);app.replaceChildren(card);
+}
+function showSignupConfirmation(address){
+ const card=node('section',undefined,'management'),panel=node('div',undefined,'setup-card');
+ const notice=node('p','가입 확인 메일을 요청했어요.','auth-notice');notice.setAttribute('role','status');
+ panel.append(node('h1','이메일을 확인해 주세요'),notice,node('strong',address),node('p','받은편지함이나 스팸함에서 가입 확인 메일의 링크를 눌러 주세요. 이메일 확인을 마치면 방을 만들 수 있어요.'),button('이메일 확인 후 로그인',()=>showTeacherLogin(address),'primary'));
+ const help=node('details',undefined,'teacher-account-info');help.append(node('summary','메일이 보이지 않나요?'),node('p','잠시 기다린 뒤 스팸함과 이메일 주소를 확인해 주세요. 이미 가입한 이메일이면 기존 비밀번호로 로그인할 수 있어요.'),button('이메일 수정 · 가입 화면으로',()=>showTeacherSignup(address)));panel.append(help);card.append(panel);app.replaceChildren(card);
 }
 async function addTeacherLogout(){$('#teacher-account-bar')?.remove();const bar=node('div',undefined,'row teacher-account-bar');bar.id='teacher-account-bar';bar.append(button(teacherLockEnabled()?'공용 기기 잠금 끄기':'공용 기기 잠금 설정',()=>teacherPinDialog(store.get('leaf-teacher-session',null,true),()=>{store.set('leaf-shared-device-lock',!teacherLockEnabled(),true);location.assign(pageUrl('teacher'));},{force:true})));bar.append(button('교사 로그아웃',async()=>{const result=await teacherAuth.signOut();verifiedTeacherId=null;clearTeacherContext();if(!result.storageCleared){app.replaceChildren(node('section','이 브라우저의 로그인 정보를 지우지 못했어요. 선생님이 사이트 데이터를 지운 뒤 기기를 넘겨 주세요.','management'));return;}if(!result.serverSignedOut)store.set('leaf-logout-message','이 기기에서 로그아웃했어요. 서버 세션 종료 여부는 확인하지 못했어요.',true);location.assign(pageUrl('play'));}));app.prepend(bar);try{await api('/api/rooms/operations');if(bar.isConnected)bar.append(button('운영 통계 · 알림 상태',showOperations));}catch{}}
 
@@ -445,7 +481,23 @@ if(!runtimeConfig.enabled){
  app.prepend(notice);
 }else if(route==='teacher')startTeacherEntry();else if(route==='display')startDisplay();else if([runtimeConfig.appBase,runtimeConfig.appBase+'index.html'].includes(location.pathname))startHome();else startEditor();
 
-function startHome(){const card=node('section',undefined,'management');card.append(node('h1','가을 조각 공방'),node('p','작은 작품으로 우리 반의 가을을 만들어요.'));const actions=node('div',undefined,'actions');actions.append(button('선생님 수업 시작',()=>location.assign(pageUrl('teacher')),'primary'),button('아이 그림 만들기',()=>location.assign(pageUrl('play'))));card.append(actions,node('p','아이들은 가입 없이 만들어요. 선생님이 보여 주는 QR이나 입장 코드로 작품을 보낼 수 있어요.','subtle'));app.replaceChildren(card);}
+function startHome(){
+ const card=node('section',undefined,'management home-page'),hero=node('div',undefined,'home-hero');
+ hero.append(node('h1','가을 조각 공방'),node('p','작은 작품으로 우리 반의 가을을 만들어요.'));
+ const actions=node('div',undefined,'actions');actions.append(button('선생님 수업 시작',()=>location.assign(pageUrl('teacher')),'primary'),button('아이 그림 만들기',()=>location.assign(pageUrl('play'))));
+ hero.append(actions,node('p','선생님은 이메일로 수업을 연결하고, 아이들은 가입 없이 만들어요.','subtle'));
+ const guide=node('section',undefined,'home-guide');guide.setAttribute('aria-labelledby','home-guide-title');const title=node('h2','처음이라면, 이렇게 이용해요');title.id='home-guide-title';
+ guide.append(title,node('p','아래 화면은 예시예요. 눌러서 크게 볼 수 있어요.','subtle'));const grid=node('div',undefined,'guide-grid');
+ const steps=[
+  ['선생님 계정 만들기','선생님 수업 시작 → 계정 만들기 → 가입 확인 메일 받기. 메일의 확인 링크를 누른 뒤 로그인해요. 같은 계정이면 다른 기기에서도 수업을 이어 볼 수 있어요.','signup.jpg'],
+  ['방 만들고 아이 초대하기','새 방을 만들고 QR이나 12자리 입장 코드를 아이들에게 보여 주세요. 아이는 QR을 찍거나 아이 그림 만들기 화면에서 코드를 넣어요.','classroom.jpg'],
+  ['아이 작품 보내기','그림을 완성하면 작품 보여주기를 눌러요. 선생님 화면에 도착한 작품에서 전시에 올리기를 누르면 함께 볼 수 있어요.','send-art.jpg'],
+  ['전시 배경과 작품 꾸미기','선생님 화면에서 전시 화면 열기 → 배경 바꾸기 · 전시 꾸미기. 배경을 고르고, 작품을 누른 뒤 끌어서 옮기거나 크기·회전을 바꿔요.','exhibition.jpg'],
+  ['작품 다운로드하기','전체 작품 다운로드로 한 번에 저장하거나 작품을 골라 선택 작품 다운로드를 눌러요. 그림 파일은 ZIP으로 묶어서 받아요. 제출 후 3일이 지나면 자동 삭제되니 삭제 예정 시각 전에 저장해 주세요.','download.jpg']
+ ];
+ steps.forEach(([heading,description,file],index)=>{const item=node('article',undefined,'guide-step'),figure=node('a',undefined,'guide-image-button');figure.href=assetUrl('guide/'+file);figure.target='_blank';figure.rel='noopener';figure.setAttribute('aria-label',heading+' 화면 크게 보기 · 새 창');const img=node('img');img.src=figure.href;img.alt=heading+' 화면 예시';img.loading='lazy';img.width=1200;img.height=800;figure.append(img);item.append(node('h3',`${index+1}. ${heading}`),figure,node('p',description));grid.append(item);});
+ guide.append(grid);card.append(hero,guide);app.replaceChildren(card);
+}
 
 async function handleAuthReturn(){
  const fragment=location.hash,values=new URLSearchParams(fragment.slice(1));
